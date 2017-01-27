@@ -57,13 +57,17 @@ rawfile<- rawfile %>%
                          ifelse(!is.na(city_general7),2,
                                 ifelse(!is.na(privious_interaction),1,0)))) %>%
   group_by(respondent_email) %>%  #keep only the best response per user.
-  mutate(max_point=max(progress)) %>% filter(progress==max_point) %>%
+  mutate(max_point=max(progress)) %>% filter(progress==max_point) %>% ungroup() %>%
   arrange(max_point)
 View(rawfile) 
 
-#all this should be under dataset
+#all this should be under dataset [TO FIX]
 dataset<-rawfile %>% 
-  mutate(gender1left_join(factor_labels[,c(1,2:3)], by = c("q_name" = "new_var_name", "level" = "q_level")))
+  mutate_at(vars(one_of(c("gender", "group"))),funs(as.numeric(as.character(.)))) %>%
+  left_join(factor_labels[factor_labels$new_var_name=="gender",2:3], 
+                           by = c("gender" = "q_level")))
+
+
   mutate_at(vars(gender),funs(factor(gender,labels=(set_factor_labels("gender")))))%>% #building new vars: gender, group
   mutate_at(vars(group),funs(factor(group,labels=(set_factor_labels("group")))))%>%
   mutate_at(vars(matches("gender")),funs(as.character(.)))
