@@ -28,10 +28,6 @@ response_sum<-left_join(mailing_list,select(clean_ds2,respondent_email,sum),
                         by=c("mail"="respondent_email"))
 
 
-#clean_ds<-clean_ds %>% filter(sum!=0)
-
-
-
 
 #compare working file with mailing list. #to check!
 not_respond<-anti_join(mailing_list,clean_ds,by=c("mail"="respondent_email"))
