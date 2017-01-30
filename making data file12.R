@@ -27,14 +27,12 @@ names(dataset_f)<-names(dataset_m) #cordinating the names
 rawfile<-rbind(dataset_m,dataset_f) 
 #tidying the new rawfile
 
-#Adding variable labels from index
+#Adding variable names from a look-up table 
 headings<- read.xlsx(heading_path,sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
-#var.labels <- as.character(headings$new_label_hebrew)
-#label(rawfile) <- lapply(c(1:76), function(x) label(rawfile[,x]) = var.labels[x])
 names(rawfile)<-headings$new_var_name #renaming variables
 
 #editing the raw data, droping vars.
- vars2drop<-c("ip_address","seq_number","Custom_variable 4","Custom_variable 5","country_code","region")
+ vars2drop<-c("duplicate","ip_address","seq_number","Custom_variable 4","Custom_variable 5","country_code","region")
  
  ## define a helper function for turning blanks to NA
  empty_as_na <- function(x){
@@ -61,16 +59,14 @@ rawfile<- rawfile %>%
   arrange(max_point)
 View(rawfile) 
 
-#all this should be under dataset [TO FIX]
+#recoding gender and group using r base 
+source ("C:/Google Drive/work/new-spirit/Artists/analyzing/project1/FUN_get_labels.R")
+
 dataset<-rawfile %>% 
-  mutate_at(vars(one_of(c("gender", "group"))),funs(as.numeric(as.character(.)))) %>%
-  left_join(factor_labels[factor_labels$new_var_name=="gender",2:3], 
-                           by = c("gender" = "q_level")))
+  mutate_at(vars(gender),funs(get_labels(rawfile,"gender",factor_labels))) %>%
+  mutate_at(vars(group),funs(get_labels(rawfile,"group",factor_labels)))
+View(select(dataset,shevet,group,gender_mailing,gender)) 
 
-
-  mutate_at(vars(gender),funs(factor(gender,labels=(set_factor_labels("gender")))))%>% #building new vars: gender, group
-  mutate_at(vars(group),funs(factor(group,labels=(set_factor_labels("group")))))%>%
-  mutate_at(vars(matches("gender")),funs(as.character(.)))
 
   mutate(new_gender=ifelse(is.na(gender),gender_mailing,gender))
   mutate(new_group=ifelse(is.na(group),gender_mailing,gender))
