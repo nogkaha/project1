@@ -7,7 +7,7 @@
 
 get_labels<-function(df,var_to_get,look_in=factor_labels) {
   x<-subset(look_in,new_var_name==var_to_get,select=-new_var_name)
-  var_out<-x[match(df[[var_to_get]],x$q_level),2] 
+  var_out<-as.character(x[match(df[[var_to_get]],x$q_level),2])
   }
 
 
