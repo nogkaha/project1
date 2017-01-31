@@ -7,13 +7,11 @@
 #reading working file:
  dataset <- readRDS(file="./data-Artists/working_file")
  
-#making a list with new data on gender.#TO FIX IT#I think that the gender field was updated during the survey
- #so I need to join the mailing list to the new field and to check what are the new values. 
- 
- ds_gender<-dataset %>% 
-  #filter(gender_mailing=="" & !is.na(respondent_email)) %>%
-  select(respondent_email,gender,new_gender)# %>% #subsetting to relevant cols 
-  #mutate(gender=factor(gender,levels=c("",1,2),labels=(c(NA,"זכר","נקבה"))))
+#making a list with new data on gender.#TO FIX IT#I think that the gender field was 
+ #updated during the survey so I need to join 
+ #the mailing list to the new field and to check what are the new values. 
+
+ # %>% #subsetting to relevant cols 
   
 #making a list with new data on email
 new_email<-dataset %>% 

@@ -39,7 +39,7 @@ names(rawfile)<-headings$new_var_name #renaming variables
  empty_as_na <- function(x){
    if("factor" %in% class(x)) x <- as.character(x)     
    ifelse(as.character(x)!="", x, NA)
- }
+   }
 
 rawfile<- rawfile %>% 
  select(-one_of(vars2drop)) %>% select(-starts_with("intro"))%>% #droping unnecessary vars 
@@ -54,19 +54,16 @@ rawfile<- rawfile %>%
   arrange(max_point) %>%
   select (-progress)
 
-#recoding gender and group using r base 
-source ("C:/Google Drive/work/new-spirit/Artists/analyzing/project1/FUN_get_labels.R")
-
+source ("C:/Google Drive/work/new-spirit/Artists/analyzing/project1/FUN_get_labels.R") #load a function to match var's values
 dataset<-rawfile %>% 
   mutate_at(vars(gender),funs(get_labels(rawfile,"gender",factor_labels))) %>%
   mutate(new_gender=ifelse(is.na(gender),gender_mailing,gender)) %>%
   mutate_at(vars(group),funs(get_labels(rawfile,"group",factor_labels))) %>%
   select(-gender_mailing,-gender,-shevet_mailing,-shevet,-time_to_complete) 
   
-View(dataset) 
-
-  #saving raw and working files and closing.
-  saveRDS(rawfile,file="./data-Artists/raw_file")
-  saveRDS(dataset,file="./data-Artists/working_file")
-  setwd(original_wd)
+#View(dataset) 
+#saving raw and working files and closing.
+ saveRDS(rawfile,file="./data-Artists/raw_file")
+ saveRDS(dataset,file="./data-Artists/working_file")
+ setwd(original_wd)
   
