@@ -45,9 +45,10 @@ rawfile<- rawfile %>%
  select(-one_of(vars2drop)) %>% select(-starts_with("intro"))%>% #droping unnecessary vars 
    mutate_each(funs(empty_as_na(.))) %>%
    filter(!is.na(place) & !is.na(respondent_email))%>% #filtering out incomplete data, and the females who were redirected.
-  mutate(progress=ifelse(!is.na(make_project)|as.numeric(lived_in_past)!=1 & !is.na(lived_in_past),3,
+  mutate(progress=ifelse(!is.na(make_project),3,
                          ifelse(!is.na(city_general7),2,
-                                ifelse(!is.na(privious_interaction),1,0)))) %>%
+                                ifelse(!is.na(privious_interaction),1,
+                                       ifelse(lived_in_past!="1" & !is.na(lived_in_past),-99,0))))) %>%
   group_by(respondent_email) %>%  #keep only the best response per user.
   mutate(max_point=max(progress)) %>% filter(progress==max_point) %>% ungroup() %>%
   arrange(max_point) %>%
