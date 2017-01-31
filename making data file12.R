@@ -3,9 +3,10 @@ original_wd<-getwd()
 setwd("C:/Google Drive/work/new-spirit/Artists")
 Sys.setlocale("LC_ALL", "Hebrew")
 library(xlsx)
-#library(Hmisc)
 library(dplyr)
 library(tidyr)
+options(stringsAsFactors = F)
+
 #get data 
 males_path<-"./data-Artists/QP_Nov_2016/males.xlsx"
 females_path<-"./data-Artists/QP_Nov_2016/females.xlsx"
@@ -39,41 +40,30 @@ names(rawfile)<-headings$new_var_name #renaming variables
    if("factor" %in% class(x)) x <- as.character(x)     
    ifelse(as.character(x)!="", x, NA)
  }
- ## define a helper function for get a vector of labels for specific var
- set_factor_labels<-function(q_name) {
-   x<-factor_labels %>% filter(new_var_name==q_name) %>%
-     select(q_label)
-   x[1:nrow(x),1]
- }
- 
+
 rawfile<- rawfile %>% 
  select(-one_of(vars2drop)) %>% select(-starts_with("intro"))%>% #droping unnecessary vars 
    mutate_each(funs(empty_as_na(.))) %>%
    filter(!is.na(place) & !is.na(respondent_email))%>% #filtering out incomplete data, and the females who were redirected.
-  mutate(progress=ifelse(!is.na(make_project)|
-                           as.numeric(lived_in_past)!=1 & !is.na(lived_in_past),3,
+  mutate(progress=ifelse(!is.na(make_project)|as.numeric(lived_in_past)!=1 & !is.na(lived_in_past),3,
                          ifelse(!is.na(city_general7),2,
                                 ifelse(!is.na(privious_interaction),1,0)))) %>%
   group_by(respondent_email) %>%  #keep only the best response per user.
   mutate(max_point=max(progress)) %>% filter(progress==max_point) %>% ungroup() %>%
-  arrange(max_point)
-View(rawfile) 
+  arrange(max_point) %>%
+  select (-progress)
 
 #recoding gender and group using r base 
 source ("C:/Google Drive/work/new-spirit/Artists/analyzing/project1/FUN_get_labels.R")
 
 dataset<-rawfile %>% 
   mutate_at(vars(gender),funs(get_labels(rawfile,"gender",factor_labels))) %>%
-  mutate_at(vars(group),funs(get_labels(rawfile,"group",factor_labels)))
-View(select(dataset,shevet,group,gender_mailing,gender)) 
+  mutate(new_gender=ifelse(is.na(gender),gender_mailing,gender)) %>%
+  mutate_at(vars(group),funs(get_labels(rawfile,"group",factor_labels))) %>%
+  select(-gender_mailing,-gender,-shevet_mailing,-shevet,-time_to_complete) 
+  
+View(dataset) 
 
-
-  mutate(new_gender=ifelse(is.na(gender),gender_mailing,gender))
-  mutate(new_group=ifelse(is.na(group),gender_mailing,gender))
-
-  rawfile$new_gender<-ifelse(is.na(rawfile$gender),
-                           rawfile$gender_mailing,
-                           rawfile$gender)
   #saving raw and working files and closing.
   saveRDS(rawfile,file="./data-Artists/raw_file")
   saveRDS(dataset,file="./data-Artists/working_file")
