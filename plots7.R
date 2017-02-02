@@ -7,24 +7,50 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(ReporteRs)
+options(stringsAsFactors = F)
 #reading working file and metainfo files:
 dataset <- readRDS(file="./data-Artists/working_file")
-options(stringsAsFactors = F)
 headings<- read.xlsx("./data-Artists/QP_Nov_2016/headings.xlsx",sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
 factor_labels<-read.xlsx("./data-Artists/QP_Nov_2016/factor_labels.xlsx",sheetIndex = 1,encoding = "UTF-8",colClasses = rep("character",4))
-source("C:/Users/nogka/Documents/R/FAN_set_factor_labels.R")
+#source("C:/Users/nogka/Documents/R/FAN_set_factor_labels.R")
 source("C:/Users/nogka/Documents/R/FAN_n.bar.R")
+
 #plotting questions with only 1's
+ #making a table with the correct number of n for each question
+ # is the n for the "which project" is acctually correct?
+n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
+  gather(q_name,value) %>%
+  count(q_name,value) %>%
+  filter(!is.na(value)) %>%
+  filter((q_name=="place" & value!="1") | 
+         (q_name=="activity1") |
+         (q_name=="privious_interaction" & value!="1") |
+         (q_name=="visit_us" & value=="1")) %>%
+  group_by(q_name) %>% summarise(total_n=sum(n))
+  
+  
  #preperaing data,  
  #errors: in the total_n., in the labels (to fix in the index) 
   sum_data<-dataset %>% select(c(activity1:which_project5, reasons_leaving1:reasons_leaving5,when_visit1:when_visit5)) %>%
       mutate_all(funs(as.numeric(.))) %>%
       gather(q_name,value) %>%
+    filter(!is.na(value)) %>%
     group_by(q_name) %>% 
-    summarise(sum_value=sum(na.omit(value)),n_value=n()) %>% 
-    ungroup() %>%
-    mutate(pct=sum_value/n_value) %>%
-    left_join(headings[,3:4],by=c("q_name"="new_var_name")) #%>%
+    summarise(sum_value=sum(na.omit(value))) %>% ungroup() %>%
+    mutate(total_n=ifelse(grepl("reasons",q_name),
+                          n_data[match("place",n_data$q_name),2],
+                          ifelse( grepl("activity",q_name),
+                                  n_data[match("privious_interaction",n_data$q_name),2],
+                                  ifelse( grepl("when",q_name),
+                                          n_data[match("visit_us",n_data$q_name),2],
+                                          ifelse( grepl("project",q_name),
+                                                  n_data[match("activity1",n_data$q_name),2],
+                                                  "could not find"))))) %>%
+    mutate(total_n=as.numeric(total_n)) %>%
+    mutate(pct=sum_value/total_n) %>%
+    left_join(headings[,3:4],by=c("q_name"="new_var_name")) 
+  
+  
 g1<-n.bar(data=sum_data,filter_by = "activ",xlab = "",ylab = "")
 g2<-n.bar(data=sum_data,filter_by = "visit",y="sum_value",xlab = "",ylab = "",is.pct = FALSE)
 g3<-n.bar(data=sum_data,filter_by = "project",y="sum_value", xlab = "",ylab = "",is.pct = FALSE)
@@ -39,8 +65,8 @@ f_data<- dataset %>%
   select(one_of(f_index)) %>% 
   gather(q_name,level) %>% filter(!is.na(level)) %>%
   count(q_name,level) %>%
-  group_by(q_name) %>% mutate(sum1=sum(as.numeric(n),na.rm=T),
-                              pct=n/sum1) %>% ungroup() %>%
+  group_by(q_name) %>% mutate(total_n=sum(as.numeric(n),na.rm=T),
+                              pct=n/total_n) %>% ungroup() %>%
   left_join(factor_labels[,c(1,2:3)], by = c("q_name" = "new_var_name", "level" = "q_level"))
 
 f1<-n.bar(data=f_data,filter_by = "stay_in",x="q_label",xlab = "",ylab = "")
@@ -59,7 +85,9 @@ f3<-ggplot(f_data %>% filter(q_name %in%
   scale_y_continuous(labels = scales::percent)
 print(f3)
 
-#plotting education by group
+#plotting education by group # I think I don't need this one, better to do some
+#thing that I need for sure and then play with it.
+
 #making data for the plot
 education_data<-dataset %>%
   filter(!is.na(education)) %>%
@@ -130,7 +158,7 @@ means_bar<-ggplot(means_data[means_data$sum_type=="mean",],
 scale_fill_brewer(palette = "Pastel2")
 print(means_bar)
 
-dist_data<-means_data %>% filter(stat %in% c("low","medium","high"))
+dist_data<-means_data %>% filter(sum_type %in% c("low","medium","high"))
 
 #dist chart, general.
 dist_data$new_label_hebrew=factor(dist_data$new_label_hebrew,
