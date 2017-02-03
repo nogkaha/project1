@@ -30,7 +30,6 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
   
   
  #preperaing data,  
- #errors: in the total_n., in the labels (to fix in the index) 
   sum_data<-dataset %>% select(c(activity1:which_project5, reasons_leaving1:reasons_leaving5,when_visit1:when_visit5)) %>%
       mutate_all(funs(as.numeric(.))) %>%
       gather(q_name,value) %>%
@@ -48,13 +47,21 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
                                                   "could not find"))))) %>%
     mutate(total_n=as.numeric(total_n)) %>%
     mutate(pct=sum_value/total_n) %>%
-    left_join(headings[,3:4],by=c("q_name"="new_var_name")) 
-  
-  
-g1<-n.bar(data=sum_data,filter_by = "activ",xlab = "",ylab = "")
-g2<-n.bar(data=sum_data,filter_by = "visit",y="sum_value",xlab = "",ylab = "",is.pct = FALSE)
-g3<-n.bar(data=sum_data,filter_by = "project",y="sum_value", xlab = "",ylab = "",is.pct = FALSE)
-g4<-n.bar(data=sum_data,filter_by = "reason",y="sum_value",xlab = "",ylab = "",is.pct = FALSE)
+    left_join(headings[,3:4],by=c("q_name"="new_var_name")) %>%
+    mutate(label_with_n=paste("(",sum_value,") ",new_label_hebrew,sep="")) #adding n's to the labels
+
+#need to build an index for graphs, with the parameters: 
+  #x,y, is.pct. which colors. axis_names.
+nm<-c("activ","visit","project","reason")
+pct_or_not<-c(TRUE,TRUE,TRUE,FALSE)
+for (i in seq_along(nm)) {
+ g_names<-paste("g_",nm[1:length(nm)],sep="")
+  g_temp<-n.bar(data=sum_data,x="label_with_n",y="pct",filter_by = nm[i],
+                xlab = "test1",ylab = "bla",
+                is.pct = pct_or_not[i])
+ assign(g_names[i],g_temp)
+ print(eval(parse(text=g_names[i])))
+}
 
 #prepearin facorial data for plotting 
 f_index<-c("place","lived_in_past","education",
@@ -117,7 +124,7 @@ print(bar_education)
            ypos=cumsum(n+0.9) - 0.5 *n) # Calculate label positions
  #plotting         
    bar_gender<-ggplot(gender_data,aes(group, n, fill=new_gender,label=n))+ 
-     geom_bar(stat="identity",color='black') +
+     geom_bar(stat="identity",color='black', width = 0.6) +
   geom_text(size = 4, position = position_stack(vjust = .5))+
      scale_y_continuous(name="מספר משיבים")+
      scale_x_discrete(name="שבט") +
