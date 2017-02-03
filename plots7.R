@@ -6,7 +6,6 @@ library(xlsx)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(ReporteRs)
 options(stringsAsFactors = F)
 #reading working file and metainfo files:
 dataset <- readRDS(file="./data-Artists/working_file")
@@ -50,18 +49,6 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
     left_join(headings[,3:4],by=c("q_name"="new_var_name")) %>%
     mutate(label_with_n=paste("(",sum_value,") ",new_label_hebrew,sep="")) #adding n's to the labels
 
-#need to build an index for graphs, with the parameters: 
-  #x,y, is.pct. which colors. axis_names.
-nm<-c("activ","visit","project","reason")
-pct_or_not<-c(TRUE,TRUE,TRUE,FALSE)
-for (i in seq_along(nm)) {
- g_names<-paste("g_",nm[1:length(nm)],sep="")
-  g_temp<-n.bar(data=sum_data,x="label_with_n",y="pct",filter_by = nm[i],
-                xlab = "test1",ylab = "bla",
-                is.pct = pct_or_not[i])
- assign(g_names[i],g_temp)
- print(eval(parse(text=g_names[i])))
-}
 
 #prepearin facorial data for plotting 
 f_index<-c("place","lived_in_past","education",
@@ -74,7 +61,27 @@ f_data<- dataset %>%
   count(q_name,level) %>%
   group_by(q_name) %>% mutate(total_n=sum(as.numeric(n),na.rm=T),
                               pct=n/total_n) %>% ungroup() %>%
-  left_join(factor_labels[,c(1,2:3)], by = c("q_name" = "new_var_name", "level" = "q_level"))
+  left_join(factor_labels[,c(1,2:3)], by = c("q_name" = "new_var_name", "level" = "q_level")) %>%
+mutate(label_with_n=paste("(",n,") ",q_label,sep="")) #adding n's to the labels
+
+plots_index<-read.xlsx("./data-Artists/QP_Nov_2016/plots_index.xlsx",
+                       sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
+#plots_index<- filter(plots_index,plot_data=="f_data")
+for (i in seq_along(plots_index$plot_data)) {
+  g_names<-paste("g_",1:nrow(plots_index),sep="")
+  g_temp<-n.bar(data=get(plots_index[i,"plot_data"]),
+                x_val=plots_index[i,"x_values"],
+                y_val=plots_index[i,"y_values"],
+                filter_by = plots_index[i,"filter_by"],
+                xlab = plots_index[i,"x_lab"],
+                ylab = plots_index[i,"y_lab"],
+                is.pct = plots_index[i,"is.pct"],
+                fill_col=plots_index[i,"color_set"],
+                reorder_x=plots_index[i,"reorder"])
+  assign(g_names[i],g_temp)
+  print(eval(parse(text=g_names[i])))
+}
+
 
 f1<-n.bar(data=f_data,filter_by = "stay_in",x="q_label",xlab = "",ylab = "")
 f2<-n.bar(data=f_data,filter_by = "education",x="q_label",xlab = "",ylab = "")
@@ -197,9 +204,7 @@ print(bar_dist_group)
 
   
   
-  
- 
-
+library(ReporteRs)
 filename <- "report1.pptx" # the document to produce
 pptx(template = "temp_artists.pptx") %>% 
   addSlide(slide.layout = "Title and Content" ) %>%
