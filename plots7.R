@@ -49,7 +49,6 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
     left_join(headings[,3:4],by=c("q_name"="new_var_name")) %>%
     mutate(label_with_n=paste("(",sum_value,") ",new_label_hebrew,sep="")) #adding n's to the labels
 
-
 #prepearin facorial data for plotting 
 f_index<-c("place","lived_in_past","education",
            "privious_interaction","basic_familarity","close_relations",
@@ -66,7 +65,7 @@ mutate(label_with_n=paste("(",n,") ",q_label,sep="")) #adding n's to the labels
 
 plots_index<-read.xlsx("./data-Artists/QP_Nov_2016/plots_index.xlsx",
                        sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
-#plots_index<- filter(plots_index,plot_data=="f_data")
+
 for (i in seq_along(plots_index$plot_data)) {
   g_names<-paste("g_",1:nrow(plots_index),sep="")
   g_temp<-n.bar(data=get(plots_index[i,"plot_data"]),
@@ -82,26 +81,137 @@ for (i in seq_along(plots_index$plot_data)) {
   print(eval(parse(text=g_names[i])))
 }
 
+#missing plots:
+ # cross_group X4
+ # education
 
-f1<-n.bar(data=f_data,filter_by = "stay_in",x="q_label",xlab = "",ylab = "")
-f2<-n.bar(data=f_data,filter_by = "education",x="q_label",xlab = "",ylab = "")
 
 #relations in the network / exp. for plotting few question with several levels each. 
-#plotting 
-f3<-ggplot(f_data %>% filter(q_name %in% 
-                               c("prof_relations","basic_familarity","close_relations")), 
-                   aes(x=q_name,y=pct, fill=reorder(q_label,-as.numeric(level)),
+#adjusting the data:
+ f_data_m<- f_data %>% filter(q_name %in% 
+                               c("prof_relations","basic_familarity","close_relations"))%>%
+  left_join(headings[,c("new_var_name","new_label_hebrew")], 
+            by = c("q_name" = "new_var_name")) %>%
+  mutate(label_with_n=paste("(",total_n,") ",new_label_hebrew,sep=""))
+  
+#plotting                              
+f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(level)),
                        label=scales::percent(round(pct,2))))+
   geom_bar(stat = "identity", width = 0.4,color="gray")+
-  xlab(NULL)+ ylab("אחוז משיבים")+
+  xlab("קשרים ברשת")+ ylab("")+
   geom_text(size = 4, position = position_stack(vjust = .5))+
   scale_fill_brewer(direction = +1, name="")+
   scale_y_continuous(labels = scales::percent)
-print(f3)
+#print(f_1)
+
+
+#plotting gender by group
+ #making data for the plot
+   gender_data<-dataset %>%
+    select(new_gender,group) %>%
+    filter(!is.na(group)) %>%
+    count(group,new_gender) %>%
+    mutate(pct=n/sum(n))
+         
+ #plotting         
+   g_12<-ggplot(gender_data,aes(group, n, fill=new_gender,label=n))+ 
+     geom_bar(stat="identity",color='gray', width = 0.6) +
+  geom_text(aes(y=n+1.4),size = 4, position = position_stack(vjust = .5))+
+     scale_y_continuous(name="מספר משיבים")+
+     scale_x_discrete(name="שבט") +
+     scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
+      print(g_12)
+   
+#plotting means:
+means_data<-dataset %>% 
+  select(networking1:networking3,art_scene1:art_scene4,city_general1:city_general7) %>%
+  mutate_all(funs(as.numeric)) %>%
+  gather("var_name","value") %>% group_by(var_name) %>%
+  summarise(mean=mean(value,na.rm = T),
+            n=sum(!is.na(value)),
+            low=mean(between(value,1,2),na.rm=T),
+            medium = mean(between(value,3,3),na.rm=T),
+            high = mean(between(value ,4,5),na.rm=T)) %>%
+  left_join(headings[,3:5],by=c("var_name"="new_var_name")) %>%
+  gather("sum_type","value",-one_of(c("var_name","n","new_label_hebrew","q_group"))) %>%
+  mutate(label_with_n=paste("(",n,") ",new_label_hebrew,sep=""))
+
+
+for (j in seq_along(unique(means_data$q_group))) {
+  g_names<-paste("m_",1:length(unique(means_data$q_group)),sep="")
+  g_temp<-m.bar(filter_by = unique(means_data$q_group)[j])
+  assign(g_names[j],g_temp)
+  print(eval(parse(text=g_names[j])))
+}
+  m_4<-ggplot(means_data[means_data$sum_type=="mean",], 
+                    aes(x=reorder(label_with_n, value),y=value, fill=q_group,
+                        label=round(value,1)))+ 
+    geom_bar(stat = "identity", width = 0.6, color="gray")+
+    coord_flip(ylim = c(1,5),expand = F) +
+   xlab("")+
+   ylab("ערך ממוצע")+
+   geom_text(size = 4, position = position_stack(vjust = .95))+
+   scale_fill_manual(values = c('#8dd3c7','#ffffb3','#bebada'),
+                     guide_legend(title = "קבוצת היגדים"))
+  
+means_data$sum_type <- factor(means_data$sum_type, levels = c("mean","high","medium","low"))
+
+dist_data<-means_data %>% filter(sum_type %in% c("low","medium","high")) %>%
+  mutate(sum_type_heb=ifelse(sum_type=="low","נמוך"
+                             ,ifelse(sum_type=="medium", "בינוני", 
+                                "גבוה")))%>%
+  mutate(type_order=ifelse(sum_type=="low",3,
+                           ifelse(sum_type=="medium",2,1)))
+
+
+#dist chart, general.
+dist_data$label_with_n=factor(dist_data$label_with_n,
+                         levels=rev(levels(reorder(dist_data[dist_data$sum_type=="low",]$label_with_n,
+                                                   dist_data[dist_data$sum_type=="low",]$value))))
+
+d_4<-ggplot(dist_data, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, type_order), 
+                                label=scales::percent(round(value,2))))+
+  geom_bar(stat = "identity", width = 0.6)+
+  coord_flip() +xlab("")+ylab("")+
+  geom_text(size = 4, position = position_stack(vjust = .5))+
+  scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
+                    guide_legend(title = "קטגורית ציון"))+
+  scale_y_continuous(labels = scales::percent)
+print(d_4)
+
+#dist by group1
+
+for (j in seq_along(unique(dist_data$q_group))) {
+  g_names<-paste("d_",1:length(unique(means_data$q_group)),sep="")
+  ds<-filter(dist_data, q_group==unique(means_data$q_group)[j])
+  
+  g_temp<-ggplot(ds, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, type_order), 
+                                label=scales::percent(round(value,2))))+
+    geom_bar(stat = "identity", width = 0.6)+
+    xlab("")+ylab("")+
+    geom_text(size = 4, position = position_stack(vjust = .5))+
+    scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
+                      guide_legend(title = "קטגורית ציון"))+
+    scale_y_continuous(labels = scales::percent)
+  
+  assign(g_names[j],g_temp)
+  print(eval(parse(text=g_names[j])))
+}
+
+plot_names<-ls(pattern = ("[a-z]_[0-9]"))
+library(ReporteRs)
+filename <- "report3.pptx" # the document to produce
+mydoc<-pptx(template = "temp_artists.pptx") #choosing tmplt
+for (i in seq_along(plot_names)){
+  mydoc<-addSlide(mydoc,slide.layout = "Title and Content") 
+  mydoc<-addPlot(mydoc, function() print(get(plot_names[i])))  
+}
+writeDoc(mydoc,file = filename )
+
+##unused code:
 
 #plotting education by group # I think I don't need this one, better to do some
 #thing that I need for sure and then play with it.
-
 #making data for the plot
 education_data<-dataset %>%
   filter(!is.na(education)) %>%
@@ -120,103 +230,3 @@ bar_education<-ggplot(education_data,aes(x=reorder(education,n),y=n,fill=group))
   scale_x_discrete(name="Education") +
   scale_fill_brewer(name="מגדר",palette="Pastel1")
 print(bar_education)
-#plotting gender by group
- #making data for the plot
-   gender_data<-dataset %>%
-    select(new_gender,group) %>%
-    filter(!is.na(group)) %>%
-    count(group,new_gender) %>%
-    arrange(group,desc(new_gender))%>%
-    mutate(pct=n/sum(n),
-           ypos=cumsum(n+0.9) - 0.5 *n) # Calculate label positions
- #plotting         
-   bar_gender<-ggplot(gender_data,aes(group, n, fill=new_gender,label=n))+ 
-     geom_bar(stat="identity",color='black', width = 0.6) +
-  geom_text(size = 4, position = position_stack(vjust = .5))+
-     scale_y_continuous(name="מספר משיבים")+
-     scale_x_discrete(name="שבט") +
-     scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
-      print(bar_gender)
-   
-bar_gender<-ggplot(gender_data,aes(group, n, fill=new_gender))+ 
-  geom_bar(stat="identity",color='black') +
-  geom_text(aes(label=n, y=ypos),size=4.5)+
-  scale_y_continuous(name="מספר משיבים")+
-  scale_x_discrete(name="שבט") +
-  scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
-
-#plotting means:
-#means_index<-c(38:40,45:55)
-means_data<-dataset %>% 
-  select(networking1:networking3,art_scene1:art_scene4,city_general1:city_general7) %>%
-  mutate_all(funs(as.numeric)) %>%
-  gather("var_name","value") %>% group_by(var_name) %>%
-  summarise(mean=mean(value,na.rm = T),
-            count=sum(!is.na(value)),
-            low=mean(between(value,1,2),na.rm=T),
-            medium = mean(between(value,3,3),na.rm=T),
-            high = mean(between(value ,4,5),na.rm=T)) %>%
-  left_join(headings[,3:4],by=c("var_name"="new_var_name")) %>%
-  gather("sum_type","value",-one_of(c("var_name","count","new_label_hebrew")))
-
-means_data$sum_type <- factor(means_data$sum_type, levels = c("mean","high","medium","low"))
-
-means_bar<-ggplot(means_data[means_data$sum_type=="mean",], 
-                  aes(x=reorder(new_label_hebrew, value),y=value, 
-                      fill=group, label=round(value,1)))+ 
-  geom_bar(stat = "identity", width = 0.7)+
-  coord_flip(ylim = c(1,5),expand = F) +
-  xlab("קטגוריות")+
-  ylab("ערך ממוצע")+
-  geom_text(size = 4, position = position_stack(vjust = .95))+
-scale_fill_brewer(palette = "Pastel2")
-print(means_bar)
-
-dist_data<-means_data %>% filter(sum_type %in% c("low","medium","high"))
-
-#dist chart, general.
-dist_data$new_label_hebrew=factor(dist_data$new_label_hebrew,
-                         levels=rev(levels(reorder(dist_data[dist_data$stat=="low",]$new_label_hebrew,
-                                                   dist_data[dist_data$stat=="low",]$value))))
-
-bar_dist<-ggplot(dist_data, aes(x=new_label_hebrew,y=value, fill=stat, 
-                                label=scales::percent(round(value,2))))+
-  geom_bar(stat = "identity",position = "fill", width = 0.7)+
-  coord_flip() +
-  xlab("קטגוריות")+
-  ylab("ערך ממוצע")+
-  geom_text(size = 4, position = position_stack(vjust = .95))+
-  scale_y_continuous(labels = scales::percent)
-print(bar_dist)
-
-#dist by group1
-bar_dist_group1<-ggplot(dist_data %>% filter(group=="art"), 
-                       aes(x=new_label_hebrew,y=value, fill=stat,
-                           label=scales::percent(round(value,2))))+
-  geom_bar(stat = "identity",position = "fill", width = 0.7)+
-  coord_flip() +
-  xlab("קטגוריות")+
-  ylab("ערך ממוצע")+
-  geom_text(size = 4, position = position_stack(vjust = .95))+
-  scale_y_continuous(labels = scales::percent)
-print(bar_dist_group)
-
-
-  
-  
-library(ReporteRs)
-filename <- "report1.pptx" # the document to produce
-pptx(template = "temp_artists.pptx") %>% 
-  addSlide(slide.layout = "Title and Content" ) %>%
-  addPlot( function() print(bar_gender)) %>%
-  addSlide(slide.layout = "Title and Content" ) %>%
-  addPlot( function() print(bar_education)) %>%
-  addSlide(slide.layout = "Title and Content" ) %>%
-  addPlot( function() print(leaving_graph)) %>%
-  addSlide(slide.layout = "Title and Content" ) %>%
-  addPlot( function() print(bar_means)) %>%
-  addSlide(slide.layout = "Title and Content" ) %>%
-  addPlot( function() print(bar_dist)) %>%
-  addSlide(slide.layout = "Title and Content" ) %>% 
-  addPlot( function() print(bar_dist_group1)) %>% 
-  writeDoc( file = filename )
