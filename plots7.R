@@ -100,7 +100,7 @@ f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(
                        label=scales::percent(round(pct,2))))+
   geom_bar(stat = "identity", width = 0.4,color="gray")+
   xlab("קשרים ברשת")+ ylab("")+
-  geom_text(size = 4, position = position_stack(vjust = .5))+
+  geom_text(size = 5, position = position_stack(vjust = .5))+
   scale_fill_brewer(direction = +1, name="")+
   scale_y_continuous(labels = scales::percent)
 #print(f_1)
@@ -121,7 +121,7 @@ f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(
 #plotting         
    g_12<-ggplot(gender_data,aes(x=reorder(label_with_n,tot_shevet),y=n, fill=new_gender,label=n))+ 
      geom_bar(stat="identity",color='gray', width = 0.5) +
-  geom_text(aes(y=n+1.4),size = 4, position = position_stack(vjust = .5))+
+  geom_text(aes(y=n+1.4),size = 5, position = position_stack(vjust = .5))+
      scale_y_continuous(name="מספר משיבים")+
      scale_x_discrete(name="שבט") +
      scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
@@ -157,8 +157,8 @@ for (j in seq_along(unique(means_data$q_group))) {
              color="gray")+
     coord_flip(ylim = c(1,5),expand = F) +
     xlab("")+
-    ylab("ערך ממוצע")+
-    geom_text(size = 4, position = position_stack(vjust = .95))+
+    ylab("Avg")+
+    geom_text(size = 5, position = position_stack(vjust = .95))+
     scale_fill_manual(values = c('#8dd3c7','#ffffb3','#bebada'),
                      guide_legend(title = "קבוצת היגדים"))
  print(m_4) 
@@ -182,7 +182,7 @@ d_4<-ggplot(dist_data, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, ty
                                 label=scales::percent(round(value,2))))+
   geom_bar(stat = "identity", width = 0.6)+
   coord_flip() +xlab("")+ylab("")+
-  geom_text(size = 4, position = position_stack(vjust = .5))+
+  geom_text(size = 5, position = position_stack(vjust = .5))+
   scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
                     guide_legend(title = "קטגורית ציון"))+
   scale_y_continuous(labels = scales::percent)
@@ -198,7 +198,7 @@ for (j in seq_along(unique(dist_data$q_group))) {
                                 label=scales::percent(round(value,2))))+
     geom_bar(stat = "identity", width = 0.4)+
     xlab("")+ylab("")+
-    geom_text(size = 4, position = position_stack(vjust = .5))+
+    geom_text(size = 5, position = position_stack(vjust = .5))+
     scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
                       guide_legend(title = "קטגורית ציון"))+
     scale_y_continuous(labels = scales::percent)
