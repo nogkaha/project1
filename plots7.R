@@ -6,17 +6,16 @@ library(xlsx)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(grid)
 options(stringsAsFactors = F)
 #reading working file and metainfo files:
 dataset <- readRDS(file="./data-Artists/working_file")
 headings<- read.xlsx("./data-Artists/QP_Nov_2016/headings.xlsx",sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
 factor_labels<-read.xlsx("./data-Artists/QP_Nov_2016/factor_labels.xlsx",sheetIndex = 1,encoding = "UTF-8",colClasses = rep("character",4))
-#source("C:/Users/nogka/Documents/R/FAN_set_factor_labels.R")
-source("C:/Users/nogka/Documents/R/FAN_n.bar.R")
+
 
 #plotting questions with only 1's
  #making a table with the correct number of n for each question
- # is the n for the "which project" is acctually correct?
 n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
   gather(q_name,value) %>%
   count(q_name,value) %>%
@@ -30,8 +29,8 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
   
  #preperaing data,  
   sum_data<-dataset %>% select(c(activity1:which_project5, reasons_leaving1:reasons_leaving5,when_visit1:when_visit5)) %>%
-      mutate_all(funs(as.numeric(.))) %>%
-      gather(q_name,value) %>%
+    mutate_all(funs(as.numeric(.))) %>%
+    gather(q_name,value) %>%
     filter(!is.na(value)) %>%
     group_by(q_name) %>% 
     summarise(sum_value=sum(na.omit(value))) %>% ungroup() %>%
@@ -41,13 +40,15 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
                                   n_data[match("privious_interaction",n_data$q_name),2],
                                   ifelse( grepl("when",q_name),
                                           n_data[match("visit_us",n_data$q_name),2],
-                                          ifelse( grepl("project",q_name),
+                                          ifelse(grepl("project",q_name),
                                                   n_data[match("activity1",n_data$q_name),2],
                                                   "could not find"))))) %>%
     mutate(total_n=as.numeric(total_n)) %>%
     mutate(pct=sum_value/total_n) %>%
     left_join(headings[,3:4],by=c("q_name"="new_var_name")) %>%
-    mutate(label_with_n=paste("(",sum_value,") ",new_label_hebrew,sep="")) #adding n's to the labels
+    mutate(label_with_n=paste("(",sum_value,") ",new_label_hebrew,sep=""))%>%
+    select(q_name,label_with_n,sum_value,total_n,everything())
+    #adding n's to the labels
 
 #prepearin facorial data for plotting 
 f_index<-c("place","lived_in_past","education",
@@ -65,7 +66,7 @@ mutate(label_with_n=paste("(",n,") ",q_label,sep="")) #adding n's to the labels
 
 plots_index<-read.xlsx("./data-Artists/QP_Nov_2016/plots_index.xlsx",
                        sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
-
+source("C:/Users/nogka/Documents/R/FAN_n.bar.R")
 for (i in seq_along(plots_index$plot_data)) {
   g_names<-paste("g_",1:nrow(plots_index),sep="")
   g_temp<-n.bar(data=get(plots_index[i,"plot_data"]),
@@ -108,35 +109,41 @@ f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(
 #plotting gender by group
  #making data for the plot
    gender_data<-dataset %>%
-    select(new_gender,group) %>%
-    filter(!is.na(group)) %>%
-    count(group,new_gender) %>%
-    mutate(pct=n/sum(n))
-         
- #plotting         
-   g_12<-ggplot(gender_data,aes(group, n, fill=new_gender,label=n))+ 
-     geom_bar(stat="identity",color='gray', width = 0.6) +
+    select(new_gender,shevet0=group) %>%
+    filter(!is.na(shevet0)) %>%
+    count(shevet0,new_gender) %>%
+    mutate(pct=n/sum(n)) %>%
+     group_by(shevet0) %>%
+   mutate(tot_shevet=sum(n)) %>% ungroup() %>%
+     mutate(label_with_n=paste("(",tot_shevet,") ",shevet0,sep=""))
+  
+   
+#plotting         
+   g_12<-ggplot(gender_data,aes(x=reorder(label_with_n,tot_shevet),y=n, fill=new_gender,label=n))+ 
+     geom_bar(stat="identity",color='gray', width = 0.5) +
   geom_text(aes(y=n+1.4),size = 4, position = position_stack(vjust = .5))+
      scale_y_continuous(name="מספר משיבים")+
      scale_x_discrete(name="שבט") +
      scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
-      print(g_12)
+    print(g_12)
    
 #plotting means:
 means_data<-dataset %>% 
   select(networking1:networking3,art_scene1:art_scene4,city_general1:city_general7) %>%
   mutate_all(funs(as.numeric)) %>%
-  gather("var_name","value") %>% group_by(var_name) %>%
+  gather("var_name","value") %>% 
+  left_join(headings[,3:5],by=c("var_name"="new_var_name")) %>%
+  group_by(q_group) %>% mutate(group_mean=mean(value,na.rm=T)) %>%
+  group_by(q_group,new_label_hebrew,var_name,group_mean) %>%
   summarise(mean=mean(value,na.rm = T),
             n=sum(!is.na(value)),
             low=mean(between(value,1,2),na.rm=T),
             medium = mean(between(value,3,3),na.rm=T),
             high = mean(between(value ,4,5),na.rm=T)) %>%
-  left_join(headings[,3:5],by=c("var_name"="new_var_name")) %>%
-  gather("sum_type","value",-one_of(c("var_name","n","new_label_hebrew","q_group"))) %>%
+  gather("sum_type","value",-one_of(c("var_name","n","new_label_hebrew","q_group","group_mean"))) %>%
   mutate(label_with_n=paste("(",n,") ",new_label_hebrew,sep=""))
 
-
+source("C:/Users/nogka/Documents/R/FAN_n.bar.R")
 for (j in seq_along(unique(means_data$q_group))) {
   g_names<-paste("m_",1:length(unique(means_data$q_group)),sep="")
   g_temp<-m.bar(filter_by = unique(means_data$q_group)[j])
@@ -146,14 +153,16 @@ for (j in seq_along(unique(means_data$q_group))) {
   m_4<-ggplot(means_data[means_data$sum_type=="mean",], 
                     aes(x=reorder(label_with_n, value),y=value, fill=q_group,
                         label=round(value,1)))+ 
-    geom_bar(stat = "identity", width = 0.6, color="gray")+
+    geom_bar(stat = "identity", width = 0.4+length(unique(means_data[["label_with_n"]]))*0.02, 
+             color="gray")+
     coord_flip(ylim = c(1,5),expand = F) +
-   xlab("")+
-   ylab("ערך ממוצע")+
-   geom_text(size = 4, position = position_stack(vjust = .95))+
-   scale_fill_manual(values = c('#8dd3c7','#ffffb3','#bebada'),
+    xlab("")+
+    ylab("ערך ממוצע")+
+    geom_text(size = 4, position = position_stack(vjust = .95))+
+    scale_fill_manual(values = c('#8dd3c7','#ffffb3','#bebada'),
                      guide_legend(title = "קבוצת היגדים"))
-  
+ print(m_4) 
+ 
 means_data$sum_type <- factor(means_data$sum_type, levels = c("mean","high","medium","low"))
 
 dist_data<-means_data %>% filter(sum_type %in% c("low","medium","high")) %>%
@@ -177,7 +186,7 @@ d_4<-ggplot(dist_data, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, ty
   scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
                     guide_legend(title = "קטגורית ציון"))+
   scale_y_continuous(labels = scales::percent)
-print(d_4)
+#print(d_4)
 
 #dist by group1
 
@@ -187,7 +196,7 @@ for (j in seq_along(unique(dist_data$q_group))) {
   
   g_temp<-ggplot(ds, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, type_order), 
                                 label=scales::percent(round(value,2))))+
-    geom_bar(stat = "identity", width = 0.6)+
+    geom_bar(stat = "identity", width = 0.4)+
     xlab("")+ylab("")+
     geom_text(size = 4, position = position_stack(vjust = .5))+
     scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
@@ -195,38 +204,18 @@ for (j in seq_along(unique(dist_data$q_group))) {
     scale_y_continuous(labels = scales::percent)
   
   assign(g_names[j],g_temp)
-  print(eval(parse(text=g_names[j])))
+  #print(eval(parse(text=g_names[j])))
 }
 
 plot_names<-ls(pattern = ("[a-z]_[0-9]"))
 library(ReporteRs)
-filename <- "report3.pptx" # the document to produce
+filename <- "report7.pptx" # the document to produce
 mydoc<-pptx(template = "temp_artists.pptx") #choosing tmplt
 for (i in seq_along(plot_names)){
-  mydoc<-addSlide(mydoc,slide.layout = "Title and Content") 
+  mydoc<-addSlide(mydoc,slide.layout = "Title and Content")
+  mydoc <-addTitle( mydoc, plot_names[i])
   mydoc<-addPlot(mydoc, function() print(get(plot_names[i])))  
+  print(c("done",i))
 }
 writeDoc(mydoc,file = filename )
 
-##unused code:
-
-#plotting education by group # I think I don't need this one, better to do some
-#thing that I need for sure and then play with it.
-#making data for the plot
-education_data<-dataset %>%
-  filter(!is.na(education)) %>%
-  select(education,group) %>%
-  mutate(stage=ifelse (as.numeric(education)>5,"Student","Not Student"))%>%
-  mutate(education=factor(education,labels=set_factor_labels("education")))%>%
-  count(education,stage,group) %>%
-  arrange(education,desc(group))%>%
-  mutate(pct=n/sum(n),
-         ypos=cumsum(n) - 0.5 *n)
-#plotting
-bar_education<-ggplot(education_data,aes(x=reorder(education,n),y=n,fill=group))+ 
-  geom_bar(stat="identity",color='black') +
-  geom_text(aes(label=n,y=ypos),size=4.5)+
-  scale_y_continuous(name="מספר משיבים")+
-  scale_x_discrete(name="Education") +
-  scale_fill_brewer(name="מגדר",palette="Pastel1")
-print(bar_education)
