@@ -61,7 +61,7 @@ dataset<-rawfile %>%
   mutate_at(vars(group),funs(get_labels(rawfile,"group",factor_labels))) %>%
   select(-gender_mailing,-gender,-shevet_mailing,-shevet,-time_to_complete) 
   
-#View(dataset) 
+View(dataset) 
 #saving raw and working files and closing.
  saveRDS(rawfile,file="./data-Artists/raw_file")
  saveRDS(dataset,file="./data-Artists/working_file")

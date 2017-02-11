@@ -1,4 +1,14 @@
 #DRAFTS
+edu_test<-n.bar(data = f_data,
+                x_val = "label_with_n",
+                y_val = "pct",
+                filter_by = "educa",
+                is.pct = TRUE,
+                reorder_x = FALSE,
+                fill_col = "qual")
+
+
+
 scale_y_continuous(limits = c(0,5))+
 #making means data version old:
 means_data<-dataset %>% 

@@ -64,6 +64,7 @@ f_data<- dataset %>%
   left_join(factor_labels[,c(1,2:3)], by = c("q_name" = "new_var_name", "level" = "q_level")) %>%
 mutate(label_with_n=paste("(",n,") ",q_label,sep="")) #adding n's to the labels
 
+
 plots_index<-read.xlsx("./data-Artists/QP_Nov_2016/plots_index.xlsx",
                        sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
 source("C:/Users/nogka/Documents/R/FAN_n.bar.R")
@@ -81,10 +82,6 @@ for (i in seq_along(plots_index$plot_data)) {
   assign(g_names[i],g_temp)
   print(eval(parse(text=g_names[i])))
 }
-
-#missing plots:
- # cross_group X4
- # education
 
 
 #relations in the network / exp. for plotting few question with several levels each. 
@@ -119,14 +116,40 @@ f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(
   
    
 #plotting         
-   g_12<-ggplot(gender_data,aes(x=reorder(label_with_n,tot_shevet),y=n, fill=new_gender,label=n))+ 
+   p_12<-ggplot(gender_data,aes(x=reorder(label_with_n,tot_shevet),y=n, fill=new_gender,label=n))+ 
      geom_bar(stat="identity",color='gray', width = 0.5) +
   geom_text(aes(y=n+1.4),size = 5, position = position_stack(vjust = .5))+
      scale_y_continuous(name="מספר משיבים")+
      scale_x_discrete(name="שבט") +
      scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
-    print(g_12)
+    print(p_12)
+#cross group interactions:
+ #preparing data:
+    cross_group<- dataset %>% filter(max_point>1) %>%
+      select(starts_with("cross_"),group) %>% 
+      gather(q_name,level,-group) %>% filter(!is.na(level)) %>%
+      count(group,q_name,level) %>%
+      group_by(group,q_name) %>% mutate(total_n=sum(as.numeric(n),na.rm=T),
+                                        pct=n/total_n) %>% ungroup() %>%
+      left_join(factor_labels[,c(1,2:3)], by = c("q_name" = "new_var_name", "level" = "q_level")) %>%
+      left_join(headings[,3:4],by=c("q_name"="new_var_name")) %>%
+      mutate(label_with_n=paste("(",total_n,") ",group,sep="")) %>% #adding n's to the labels
+      arrange(group,q_name,level ) 
    
+    grp_lev<-unique(cross_group$group) #setting factor in the desired order
+    new_lev<-grp_lev[c(5,3,2,1,4)]
+    cross_group$group<-with(cross_group,factor(group,levels = new_lev))
+  #plotting:    
+    p_13<-ggplot(cross_group,aes(x=q_label,y=n, fill=q_label,label=n))+ 
+      geom_bar(stat="identity",color='gray',width = 0.3) +
+      geom_text(aes(y=n+10),size = 4, vjust = 1)+
+      scale_y_continuous(name="מספר משיבים")+
+      scale_x_discrete(name="") +
+      scale_fill_manual(values=c("#EF8A62", "#67A9CF"),guide=F)+
+      facet_grid(group~new_label_hebrew)
+    print(p_13)
+
+    
 #plotting means:
 means_data<-dataset %>% 
   select(networking1:networking3,art_scene1:art_scene4,city_general1:city_general7) %>%
@@ -150,6 +173,8 @@ for (j in seq_along(unique(means_data$q_group))) {
   assign(g_names[j],g_temp)
   print(eval(parse(text=g_names[j])))
 }
+
+
   m_4<-ggplot(means_data[means_data$sum_type=="mean",], 
                     aes(x=reorder(label_with_n, value),y=value, fill=q_group,
                         label=round(value,1)))+ 
@@ -173,20 +198,6 @@ dist_data<-means_data %>% filter(sum_type %in% c("low","medium","high")) %>%
                            ifelse(sum_type=="medium",2,1)))
 
 
-#dist chart, general.
-dist_data$label_with_n=factor(dist_data$label_with_n,
-                         levels=rev(levels(reorder(dist_data[dist_data$sum_type=="low",]$label_with_n,
-                                                   dist_data[dist_data$sum_type=="low",]$value))))
-
-d_4<-ggplot(dist_data, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, type_order), 
-                                label=scales::percent(round(value,2))))+
-  geom_bar(stat = "identity", width = 0.6)+
-  coord_flip() +xlab("")+ylab("")+
-  geom_text(size = 5, position = position_stack(vjust = .5))+
-  scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
-                    guide_legend(title = "קטגורית ציון"))+
-  scale_y_continuous(labels = scales::percent)
-#print(d_4)
 
 #dist by group1
 
@@ -206,16 +217,38 @@ for (j in seq_along(unique(dist_data$q_group))) {
   assign(g_names[j],g_temp)
   #print(eval(parse(text=g_names[j])))
 }
+#dist chart, general.
+dist_data$label_with_n=factor(dist_data$label_with_n,
+                              levels=rev(levels(reorder(dist_data[dist_data$sum_type=="low",]$label_with_n,
+                                                        dist_data[dist_data$sum_type=="low",]$value))))
 
-plot_names<-ls(pattern = ("[a-z]_[0-9]"))
+d_4<-ggplot(dist_data, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, type_order), 
+                           label=scales::percent(round(value,2))))+
+  geom_bar(stat = "identity", width = 0.6)+
+  coord_flip() +xlab("")+ylab("")+
+  geom_text(size = 5, position = position_stack(vjust = .5))+
+  scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
+                    guide_legend(title = "קטגורית ציון"))+
+  scale_y_continuous(labels = scales::percent)
+#print(d_4)
+
+#reporting results to a pptx file:
+filename <- "report8.pptx" # the document to produce
+slides_index<-read.xlsx("./data-Artists/QP_Nov_2016/slides_index.xlsx",
+                       sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
 library(ReporteRs)
-filename <- "report7.pptx" # the document to produce
-mydoc<-pptx(template = "temp_artists.pptx") #choosing tmplt
-for (i in seq_along(plot_names)){
-  mydoc<-addSlide(mydoc,slide.layout = "Title and Content")
-  mydoc <-addTitle( mydoc, plot_names[i])
-  mydoc<-addPlot(mydoc, function() print(get(plot_names[i])))  
+ppt_report<-pptx(template = "temp_artists.pptx") #choosing tmplt
+for (i in seq_along(slides_index$slide_num)){
+  ppt_report<-addSlide(ppt_report,
+                       slide.layout = slide.layouts(ppt_report)[slides_index$slide_theme[i]])
+  if (!is.na(slides_index$slide_head[i])){
+    ppt_report <-addTitle(ppt_report, slides_index$slide_head[i])
+    }
+  ppt_report<-addPlot(ppt_report, function() print(get(slides_index$plot1[i])))  
+  if (!is.na(slides_index$plot2[i])){
+    ppt_report <-addPlot(ppt_report, function() print(get(slides_index$plot2[i])))
+  }
   print(c("done",i))
 }
-writeDoc(mydoc,file = filename )
+writeDoc(ppt_report,file = filename )
 
