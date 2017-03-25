@@ -133,10 +133,12 @@ print(f_1)
      scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
    p_12<-set_scales_size(p_12)
     print(p_12)
-#cross group interactions:
+
+    #cross group interactions:
  #preparing data:
     cross_group<- dataset %>% filter(max_point>1) %>%
       select(starts_with("cross_"),group) %>% 
+      filter(!group %in% c("חרדי","ערבי",NA ))%>%
       gather(q_name,level,-group) %>% filter(!is.na(level)) %>%
       count(group,q_name,level) %>%
       group_by(group,q_name) %>% mutate(total_n=sum(as.numeric(n),na.rm=T),
