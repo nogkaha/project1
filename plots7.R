@@ -63,6 +63,7 @@ f_index<-c("place","lived_in_past","education",
            "stay_in_town","org_activities","visit_us","make_project")
 f_data<- dataset %>% 
   select(one_of(f_index)) %>% 
+  mutate(place_new=ifelse(place==1,1,2)) %>%
   gather(q_name,level) %>% filter(!is.na(level)) %>%
   count(q_name,level) %>%
   group_by(q_name) %>% mutate(total_n=sum(as.numeric(n),na.rm=T),
@@ -99,13 +100,15 @@ for (i in seq_along(plots_index$plot_data)) {
   mutate(label_with_n=paste("(",total_n,") ",new_label_hebrew,sep=""))
   
 #plotting                              
-f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(level)),
-                       label=scales::percent(round(pct,2))))+
+f_1<-ggplot(f_data_m,aes(x=reorder(q_label,-as.numeric(level)),
+                         y=pct, fill=reorder(q_label,-as.numeric(level)),
+                         label=scales::percent(round(pct,2))))+
   geom_bar(stat = "identity", width = 0.4,color="gray")+
-  xlab("")+ ylab("")+
+  xlab("עם כמה אמנים")+ ylab("")+
   geom_text(size = 5,hjust=.4, position = position_stack(vjust = .5))+
-  scale_fill_brewer(direction = +1, name="עם כמה אמנים")+
-  scale_y_continuous(labels = scales::percent) 
+  scale_fill_brewer(direction = +1, guide=FALSE)+
+  scale_y_continuous(labels = scales::percent) +
+  facet_grid(label_with_n ~ .)
   f_1<-set_scales_size(f_1)
 print(f_1)
 
