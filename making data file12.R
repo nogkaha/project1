@@ -62,6 +62,9 @@ dataset<-rawfile %>%
   select(-gender_mailing,-gender,-shevet_mailing,-shevet,-time_to_complete) 
   
 View(dataset) 
+
+###deleting responses from unknown emails:
+dataset<- dataset %>% filter(respondent_email!="omanchaya@gmail.com")
 #saving raw and working files and closing.
  saveRDS(rawfile,file="./data-Artists/raw_file")
  saveRDS(dataset,file="./data-Artists/working_file")

@@ -71,8 +71,10 @@ text_comments<-sapply(text_comments, function(x){
   gsub("\\[כן\\]", "",x)})
 
 #rapping the data in an excel file
-write.xlsx(text_comments, "./outputs/new_data_lists.xlsx", sheetName="comments", 
+write.xlsx(as.data.frame(dataset), "./outputs/new_data_lists.xlsx", sheetName="alldata", 
            col.names=TRUE, row.names=F, append=FALSE,showNA = F)
+write.xlsx(text_comments, "./outputs/new_data_lists.xlsx", sheetName="comments", 
+           col.names=TRUE, row.names=F, append=T,showNA = F)
 write.xlsx(as.data.frame(ds_gender),"./outputs/new_data_lists.xlsx", sheetName="new_gender", 
            col.names=T, row.names=F, append=T,showNA = F)
 write.xlsx(as.data.frame(new_location), "./outputs/new_data_lists.xlsx", sheetName="location", 

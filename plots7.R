@@ -13,6 +13,12 @@ dataset <- readRDS(file="./data-Artists/working_file")
 headings<- read.xlsx("./data-Artists/QP_Nov_2016/headings.xlsx",sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
 factor_labels<-read.xlsx("./data-Artists/QP_Nov_2016/factor_labels.xlsx",sheetIndex = 1,encoding = "UTF-8",colClasses = rep("character",4))
 
+#filtering the dataset accordign to the diff plots:
+dataset<-dataset %>% filter(max_point %in% c(2,3,-99)) #delete very short responses 
+
+dataset<-dataset %>% filter(lived_in_past %in% c(2,3)) %>% 
+  mutate_each(funs("is.na<-"),group:comments) %>%
+bind_rows(filter(dataset,!lived_in_past %in% c(2,3) |is.na(lived_in_past))) #turning the data of the women who left the city to NA
 
 #plotting questions with only 1's
  #making a table with the correct number of n for each question
@@ -46,7 +52,7 @@ n_data<-dataset %>% select(privious_interaction,place,visit_us,activity1) %>%
     mutate(total_n=as.numeric(total_n)) %>%
     mutate(pct=sum_value/total_n) %>%
     left_join(headings[,3:4],by=c("q_name"="new_var_name")) %>%
-    mutate(label_with_n=paste("(",sum_value,") ",new_label_hebrew,sep=""))%>%
+    mutate(label_with_n=paste(" (",sum_value,") ", "\n",new_label_hebrew,sep=""))%>%
     select(q_name,label_with_n,sum_value,total_n,everything())
     #adding n's to the labels
 
@@ -96,12 +102,12 @@ for (i in seq_along(plots_index$plot_data)) {
 f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(level)),
                        label=scales::percent(round(pct,2))))+
   geom_bar(stat = "identity", width = 0.4,color="gray")+
-  xlab("קשרים ברשת")+ ylab("")+
-  geom_text(size = 5, position = position_stack(vjust = .5))+
-  scale_fill_brewer(direction = +1, name="")+
-  scale_y_continuous(labels = scales::percent)
-#print(f_1)
-
+  xlab("")+ ylab("")+
+  geom_text(size = 5,hjust=.4, position = position_stack(vjust = .5))+
+  scale_fill_brewer(direction = +1, name="עם כמה אמנים")+
+  scale_y_continuous(labels = scales::percent) 
+  f_1<-set_scales_size(f_1)
+print(f_1)
 
 #plotting gender by group
  #making data for the plot
@@ -122,6 +128,7 @@ f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(
      scale_y_continuous(name="מספר משיבים")+
      scale_x_discrete(name="שבט") +
      scale_fill_manual(name="מגדר",values=c("#EF8A62", "#67A9CF"))
+   p_12<-set_scales_size(p_12)
     print(p_12)
 #cross group interactions:
  #preparing data:
@@ -147,6 +154,7 @@ f_1<-ggplot(f_data_m,aes(x=label_with_n,y=pct, fill=reorder(q_label,-as.numeric(
       scale_x_discrete(name="") +
       scale_fill_manual(values=c("#EF8A62", "#67A9CF"),guide=F)+
       facet_grid(group~new_label_hebrew)
+    p_13<-set_scales_size(p_13,sizey = 10)
     print(p_13)
 
     
@@ -164,7 +172,7 @@ means_data<-dataset %>%
             medium = mean(between(value,3,3),na.rm=T),
             high = mean(between(value ,4,5),na.rm=T)) %>%
   gather("sum_type","value",-one_of(c("var_name","n","new_label_hebrew","q_group","group_mean"))) %>%
-  mutate(label_with_n=paste("(",n,") ",new_label_hebrew,sep=""))
+  mutate(label_with_n=paste("(",n,")",new_label_hebrew,sep=""))
 
 source("C:/Users/nogka/Documents/R/FAN_n.bar.R")
 for (j in seq_along(unique(means_data$q_group))) {
@@ -186,6 +194,7 @@ for (j in seq_along(unique(means_data$q_group))) {
     geom_text(size = 5, position = position_stack(vjust = .95))+
     scale_fill_manual(values = c('#8dd3c7','#ffffb3','#bebada'),
                      guide_legend(title = "קבוצת היגדים"))
+  m_4<-set_scales_size(m_4)
  print(m_4) 
  
 means_data$sum_type <- factor(means_data$sum_type, levels = c("mean","high","medium","low"))
@@ -212,7 +221,10 @@ for (j in seq_along(unique(dist_data$q_group))) {
     geom_text(size = 5, position = position_stack(vjust = .5))+
     scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
                       guide_legend(title = "קטגורית ציון"))+
-    scale_y_continuous(labels = scales::percent)
+    scale_y_continuous(labels = scales::percent)+
+    scale_x_discrete(labels = function(x) lapply(
+      strwrap(x, width = 15, simplify = FALSE), paste, collapse="\n"))
+    g_temp<-set_scales_size(g_temp)
   
   assign(g_names[j],g_temp)
   #print(eval(parse(text=g_names[j])))
@@ -230,10 +242,9 @@ d_4<-ggplot(dist_data, aes(x=label_with_n,y=value, fill=reorder(sum_type_heb, ty
   scale_fill_manual(values = c("#1a9641","#fdae61","#d7191c"),
                     guide_legend(title = "קטגורית ציון"))+
   scale_y_continuous(labels = scales::percent)
-#print(d_4)
-
+  d_4<-set_scales_size(d_4)
 #reporting results to a pptx file:
-filename <- "report8.pptx" # the document to produce
+filename <- "report9.pptx" # the document to produce
 slides_index<-read.xlsx("./data-Artists/QP_Nov_2016/slides_index.xlsx",
                        sheetIndex = 1, encoding="UTF-8",header = T,as.data.frame = T)
 library(ReporteRs)
